@@ -96,7 +96,7 @@ glasso_item <-
     vsize = 3.0,
     color = col_item,
     filename = "Images/itemGGM",
-    filetype = "pdf"
+    filetype = "tiff"
   )
 
 #####################Relationship between scales################################
@@ -133,7 +133,7 @@ coreConstructsGGM <-
     layoutOffset = c(-.2,0),
     sampleSize = N,
     filename = "Images/scaleGGM",
-    filetype = "pdf"
+    filetype = "tiff"
   )
 #dev.off()
 
@@ -169,7 +169,7 @@ memberGGM <-
     layoutOffset = c(-.2,0),
     sampleSize = N_member,
     filename = "Images/Scalesmember",
-    filetype = "pdf"
+    filetype = "tiff"
   )
 
 Nonmember_GGM <-
@@ -189,7 +189,7 @@ Nonmember_GGM <-
     vsize = 3.8,
     sampleSize = N_nonmember,
     filename = "Images/ScalesNonMember",
-    filetype = "pdf"
+    filetype = "tiff"
   )
 
 
