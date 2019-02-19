@@ -1,0 +1,601 @@
+require(qgraph)
+require(data.table)
+require(RColorBrewer)
+require(SID)
+require(xtable)
+require(dplyr)
+require(NetworkComparisonTest)
+require(bootnet)
+require(psych)
+require(eeptools)
+require(mgm)
+require(Amelia)
+
+
+#require(pcalg)
+
+rm(list = ls())
+source("helper.R")
+rawData <- fread("W1 BK29 for GGM paper.csv")
+
+
+###################################Item level analysis########################
+
+itemid <- c(
+  "Ind_Val_alt_1_EQUAL",
+  "Ind_Val_alt_2_PEACE",
+  "Ind_Val_alt_3_JUST",
+  "Ind_Val_alt_4_HELP",
+  "Ind_Val_bio_1_RESPECT",
+  "Ind_Val_bio_2_UNITY",
+  "Ind_Val_bio_3_PROTECT",
+  "Ind_Val_bio_4_POLL",
+  "Ind_Val_ego_1_POWER",
+  "Ind_Val_ego_2_WEALTH",
+  "Ind_Val_ego_3_AUTHOR",
+  "Ind_Val_ego_4_INFL",
+  "Ind_Val_ego_5_AMBIT",
+  "Ind_Val_hed_1_PLEASURE",
+  "Ind_Val_hed_2_ENJOY",
+  "Ind_Val_hed_3_INDULG",
+  "Ind_EnvID_1",
+  "Ind_EnvID_2",
+  "Ind_EnvID_3",
+  "Ind_Norms_1_AWARE",
+  "Ind_Norms_2_REDUCE",
+  "Ind_Norms_3_RENEW",
+  "Ind_NBelong",
+  "Ind_NUnique",
+  "Buurt_Ent",
+  "Buurt_Sid_hom_1",
+  "Buurt_Sid_hom_2",
+  "Buurt_Sid_int_1",
+  "Buurt_Sid_int_2",
+  "Buurt_Int_1",
+  "Buurt_Int_2",
+  "Buurt_Identif_1_SISI",
+  "Buurt_Identif_2_SOL",
+  "Buurt_Identif_3_SAT",
+  "Buurt_Identif_4_CEN",
+  "Buurt_EnvID_1",
+  "Buurt_EnvID_2",
+  "Buurt_EnvID_3",
+  "Buurt_Norms_1_AWARE",
+  "Buurt_Norms_2_REDUCE",
+  "Buurt_Norms_3_RENEW",
+  "Out_Anger_corp",
+  "Out_Anger_gov",
+  "Out_DistMot_corp",
+  "Out_DistMot_gov",
+  "Init_ROLE",
+  "Beh_Past_Ind_en_1_REDUCE",
+  "Beh_Past_Ind_en_3_HEAT_open",
+  "Beh_Past_Ind_en_4_SHOWER_open",
+  "Beh_Past_Ind_en_5_APPL_open",
+  "Beh_Past_Ind_en_2_EFFCOUNT",
+  "Beh_Int_Ind_en_1_REDUCE",
+  "Beh_Int_Ind_en_2_RENEW",
+  "Beh_Int_Ind_en_3_HEAT",
+  "Beh_Int_Ind_en_4_SHOWER",
+  "Beh_Int_Ind_en_5_APPL",
+  "Beh_Int_Coll_en_1_MOT",
+  "Beh_Int_Coll_en_2_REDUCE",
+  "Beh_Int_Coll_en_3_BK",
+  "Beh_Int_Ind_sp_1_CAR",
+  "Beh_Int_Ind_sp_2_PROD",
+  "Beh_Int_Ind_sp_3_DONATE",
+  "Beh_Int_Coll_soc_1_ACTIVE",
+  "Beh_Int_Coll_soc_2_INITIATE",
+  "Demo_gender",
+  "Demo_birthyear",
+  "Demo_edu",
+  "Demo_income"
+)
+
+#obtain items necessary for analysis (568 X 68)
+items <- rawData[, itemid, with = FALSE]
+
+itemNames <- data.frame(names(items))
+itemTable <- xtable(itemNames)
+
+# some variables are reported as factors, but cor() only works for numericals
+for (i in 1:ncol(items)) {
+  if (class(items[[i]]) == "character") {
+    items[[i]] <- as.numeric(items[[i]])
+  }
+}
+
+
+#convert birthyear to age
+t <- strptime(items$Demo_birthyear, format = "%Y")
+for (i in 1:length(t)) {
+    if (is.na(t[i])) {
+      t[i] <- as.POSIXct.Date(Sys.Date())
+    }
+  }
+
+age <- floor(age_calc(as.Date(t), units="years"))
+items$Demo_birthyear<-age
+
+# how many missing values are there per variable, max is important if i use "complete"
+na_count <- sapply(items, function(y)
+  length(which(is.na(y))))
+na_count <- as.data.frame(na_count)
+frequency(na_count) 
+
+#Obtain cor matrix
+corItems <- cor_auto(items, missing="pairwise", ordinalLevelMax = 5)
+corFIML <- corFiml(items, covar = FALSE,show=FALSE)
+save(corItems, file="ItemCorrelationMatrixPairwise.Rdata")
+save(corFIML, file="ItemCorrelationMatrixFIML.Rdata")
+
+#colors for graphs
+groups_items <- list(
+  `Altruistic values [1-4]` = c(1:4),
+  `Biospheric values [5-8]` = c(5:8),
+  `Egoistic values [9-13]` = c(9:13),
+  `Hedonic values [14-16]` = c(14:16),
+  `Environmental self-identity [17-19]` = c(17:19),
+  `Personal importance of sustainable energy behaviour [20-22]` = c(20:22),
+  `Need to belong [23]` = c(23),
+  `Need to be unique [24]` = c(24),
+  `Neighbourhood entitativity [25]` = c(25),
+  `Neighbourhood homogeneity [26-27]` = c(26:27),
+  `Neighbourhood interaction [28-29]` = c(28:29),
+  `Interaction with neighbours [30-31]` = c(30:31),
+  `Neighbourhood identification [32-35]` = c(32:35),
+  `Environmental neighbourhood identity [36-38]` = c(36:38),
+  `Neighbourhood importance of sustainable energy behaviour [39-41]` = c(39:41),
+  `Group-based anger [42-43]` = c(42:43),
+  `Group-based distrust [44-45]` = c(44:45),
+  `Membership [46]` = c(46),
+  `Overall energy savings [47]` = c(47),
+  `Thermostat temperature (°C) [48]` = c(48),
+  `Shower time (min) [49]` = c(49),
+  `Energy-efficient appliances [50]` = c(50),
+  `Energy-saving measures [51]` = c(51),
+  `Household sustainable energy intentions [52-56]` = c(52:56),
+  `Communal sustainable energy intentions [57-58]` = c(57:58),
+  `Initiative involvement intentions [59]` = c(59),
+  `Other pro-environmental intentions [60-62]` = c(60:62),
+  `Other commmunal intentions [63-64]` = c(63:64),
+  `Demographical variables [65-68]` = c(65:68)
+  )
+
+
+col_item <- rep(brewer.pal(length(groups_items),name = "Set3"),3)
+
+#display item graph
+
+glasso_item <-
+  qgraph(
+    corItems,
+    layout = "spring",
+    graph = "glasso",
+    labels = TRUE,
+    sampleSize = nrow(items),
+    tuning = 0.5,
+    minimum = 0.1,
+    groups = groups_items,
+    legend.cex = 0.35,
+    layoutOffset = c(-.2,0),
+    vsize = 3.0,
+    color = col_item,
+    filename = "Images/itemGlassoThrehold",
+    filetype = "pdf"
+    #palette = "colorblind"
+  )
+
+glasso_itemFIML <-
+  qgraph(
+    corFIML,
+    layout = glasso_item$layout,
+    graph = "glasso",
+    labels = TRUE,
+    sampleSize = nrow(items),
+    tuning = 0.5,
+    minimum = 0.1,
+    groups = groups_items,
+    legend.cex = 0.35,
+    layoutOffset = c(-.2,0),
+    vsize = 3.0,
+    color = col_item,
+    filename = "Images/itemGlassoThreholdFIML",
+    filetype = "pdf"
+    #palette = "colorblind"
+  )
+
+
+########-------------SCALE LEVEL----------------#################
+#CORE CONSTRUCTS
+### Constructs means and GGM
+Data_check <- items
+
+#personal scales
+Altruistic_values <- rowMeans(Data_check[, 1:4], na.rm = TRUE)
+Biospheric_values <-  rowMeans(Data_check[, 5:8], na.rm = TRUE)
+Egoistic_values   <-  rowMeans(Data_check[, 9:13], na.rm = TRUE)
+Hedonic_values   <-  rowMeans(Data_check[, 14:16], na.rm = TRUE)
+Environmental_self_identity <-  rowMeans(Data_check[, 17:19], na.rm = TRUE)
+Personal_importance_of_sustainable_energy_behaviour <-
+  rowMeans(Data_check[, 20:22], na.rm = TRUE)
+Need_to_belong <- Data_check[[23]]
+Need_to_be_unique <- Data_check[[24]]
+#social factors
+Neighbourhood_entitativity <- Data_check[[25]]
+Neighbourhood_homogeneity <-  rowMeans(Data_check[, 26:27], na.rm = TRUE)
+Neighbourhood_interaction <-  rowMeans(Data_check[, 28:29], na.rm = TRUE)
+Interaction_with_neighbours <-  rowMeans(Data_check[, 30:31], na.rm = TRUE)
+Neighbourhood_identification <-  rowMeans(Data_check[, 32:35], na.rm = TRUE)
+Environmental_neighbourhood_identity <- rowMeans(Data_check[, 36:38], na.rm = TRUE)
+Neighbourhood_importance_of_sustainable_energy_behaviour <-
+  rowMeans(Data_check[, 39:41], na.rm = TRUE)
+#grp based anger
+Group_based_anger <-  rowMeans(Data_check[, 42:43], na.rm = TRUE)
+Group_based_distrust <-  rowMeans(Data_check[, 44:45], na.rm = TRUE)
+#memberhip
+Membership <- Data_check[[46]]
+#intentions and behaviour
+Overall_energy_savings<- Data_check[[47]]
+Thermostat_temperature<- Data_check[[48]]
+Shower_time <- Data_check[[49]]
+Energy_efficient_appliances<- Data_check[[50]]
+Energy_saving_measures<- Data_check[[51]]
+Household_sustainable_energy_intentions <- rowMeans(Data_check[, 52:56], na.rm = TRUE)
+Communal_sustainable_energy_intentions <- rowMeans(Data_check[, 57:58], na.rm = TRUE)
+Initiative_involvement_intentions <- Data_check[[59]]
+Other_pro_environmental_intentions <- rowMeans(Data_check[, 60:62], na.rm = TRUE)
+Other_commmunal_intentions<- rowMeans(Data_check[, 63:64], na.rm = TRUE)
+Gender <- Data_check[[65]]
+Age <- Data_check[[66]]
+Education <- Data_check[[67]]
+Income <- Data_check[[68]]
+
+
+
+Scales <- data.table(
+  Altruistic_values,
+  Biospheric_values,
+  Egoistic_values,
+  Hedonic_values,
+  Environmental_self_identity,
+  Personal_importance_of_sustainable_energy_behaviour,
+  Need_to_belong,
+  Need_to_be_unique,
+  Neighbourhood_entitativity,
+  Neighbourhood_homogeneity,
+  Neighbourhood_interaction,
+  Interaction_with_neighbours,
+  Neighbourhood_identification,
+  Environmental_neighbourhood_identity,
+  Neighbourhood_importance_of_sustainable_energy_behaviour,
+  Group_based_anger,
+  Group_based_distrust,
+  Overall_energy_savings,
+  Thermostat_temperature,
+  Shower_time,
+  Energy_efficient_appliances,
+  Energy_saving_measures,
+  Household_sustainable_energy_intentions,
+  Communal_sustainable_energy_intentions,
+  Initiative_involvement_intentions,
+  Other_pro_environmental_intentions,
+  Other_commmunal_intentions,
+  Gender, Age, Education, Income,Membership
+)
+
+save(Scales, file="BuurkrachtScales.Rdata")
+
+#Set membership (init role) to a binary variable ; 1 denotes membership
+#  0   1
+# 265 303
+# for (i in 1:length(Scales$Membership)) {
+#   if (Scales$Membership[i] > 1) {
+#     Scales$Membership[i] <- 1
+#   } else {
+#     Scales$Membership[i] <- 0
+#   }
+# }
+
+corScalesFIML <- corFiml(Scales, covar = FALSE,show=FALSE)
+corScales <- cor_auto(Scales, ordinalLevelMax = 5)
+
+rownames(corScalesFIML)<- gsub("_", " ", rownames(corScalesFIML))
+colnames(corScalesFIML)<- gsub("_", " ", colnames(corScalesFIML))
+
+rownames(corScales)<- gsub("_", " ", rownames(corScales))
+colnames(corScales)<- gsub("_", " ", colnames(corScales))
+stargazer::stargazer(corScales)
+
+save(corScalesFIML, file="ScaleCorrelationMatrixFIML.Rdata")
+save(corScales, file="ScaleCorrelationMatrix.Rdata")
+
+g1 <- "Personal factors"
+g2 <- "Factors related to the social context"
+g3 <- "Opinions on energy companies and governance"
+g4 <- "Membership"
+g5 <- "Sustainable energy intentions and behaviours"
+g6 <- "Socio-demographics"
+
+
+Summed_groups2 <- list(
+  `Personal factors` = c(1:8),
+  `Factors related to the social context` = c(9:15),
+  `Evaluations of energy companies and the government` = c(16:17),
+  `Sustainable energy intentions and behaviours` = c(18:27),
+  `Socio-demographics` = c(28:31),
+  `Membership` <- c(32)
+)
+
+col_scales <- brewer.pal(length(Summed_groups2),name = "Accent")
+
+#pdf("Images/ScaleGlassoThrehold.pdf", width = 11.2, height = 8)
+
+coreConstructsGGMFIML <-
+  qgraph(
+    corScalesFIML,
+    layout = "spring",
+    graph = "glasso",
+    minimum = 0.1,
+    labels = TRUE,
+    color = col_scales,
+    nodeNames = gsub("_", " ", colnames(Scales)),
+    groups = Summed_groups2,
+    legend.mode = "style1",
+    tuning = 0.5,
+    legend.cex = 0.32,
+    vsize = 3.8,
+    layoutOffset = c(-.2,0),
+    #GLratio=1.0,
+    sampleSize = nrow(Scales),
+    filename = "Images/ScaleGlassoThreholdFIML",
+    filetype = "pdf"
+  )
+
+coreConstructsGGM <-
+  qgraph(
+    corScales,
+    layout = coreConstructsGGMFIML$layout,
+    graph = "glasso",
+    minimum = 0.1,
+    labels = TRUE,
+    color = col_scales,
+    nodeNames = gsub("_", " ", colnames(Scales)),
+    groups = Summed_groups2,
+    legend.mode = "style1",
+    tuning = 0.5,
+    legend.cex = 0.32,
+    vsize = 3.8,
+    layoutOffset = c(-.2,0),
+    #GLratio=1.0,
+    sampleSize = nrow(Scales),
+    filename = "Images/ScaleGlassoThrehold",
+    filetype = "pdf"
+  )
+#dev.off()
+
+###############################Subgroup Analysis############################
+
+Data_members_summed <- filter(Scales, Membership != 1)
+Data_nonmembers_summed <- filter(Scales, Membership == 1)
+
+Data_members_summed$Membership <- NULL
+Data_nonmembers_summed$Membership <- NULL
+
+
+# members correlation matrix
+cor_memFIML <- corFiml(Data_members_summed, covar = FALSE,show=FALSE)
+cor_mem <- cor_auto(Data_members_summed, ordinalLevelMax = 5)
+rownames(cor_memFIML)<- gsub("_", " ", rownames(cor_memFIML))
+colnames(cor_memFIML)<- gsub("_", " ", colnames(cor_memFIML))
+rownames(cor_mem)<- gsub("_", " ", rownames(cor_mem))
+colnames(cor_mem)<- gsub("_", " ", colnames(cor_mem))
+save(cor_memFIML, file="members_ScaleCorrelationMatrixFIML.Rdata")
+save(cor_mem, file="members_ScaleCorrelationMatrix.Rdata")
+# non-members correlation matrix
+cor_nonmemFIML <- corFiml(Data_nonmembers_summed, covar = FALSE,show=FALSE)
+cor_nonmem <- cor_auto(Data_nonmembers_summed, ordinalLevelMax = 5)
+rownames(cor_nonmemFIML)<- gsub("_", " ", rownames(cor_nonmemFIML))
+colnames(cor_nonmemFIML)<- gsub("_", " ", colnames(cor_nonmemFIML))
+rownames(cor_nonmem)<- gsub("_", " ", rownames(cor_nonmem))
+colnames(cor_nonmem)<- gsub("_", " ", colnames(cor_nonmem))
+save(cor_nonmemFIML, file="non_members_ScaleCorrelationMatrixFIML.Rdata")
+save(cor_nonmem, file="non_membersScaleCorrelationMatrix.Rdata")
+
+
+#colors for graphs
+Summed_groups_sub <- list(
+  `Personal factors` = c(1:8),
+  `Factors related to the social context` = c(9:15),
+  `Evaluations of energy companies and the government` = c(16:17),
+  `Sustainable energy intentions and behaviours` = c(18:27),
+  `Socio-demographics` = c(28:31)
+)
+
+#display and save graphs FIML
+memberGGMFIML <-
+  qgraph(
+    cor_memFIML,
+    layout = "spring",
+    graph = "glasso",
+    minimum = 0.1,
+    palette="ggplot2",
+    labels = TRUE,
+    nodeNames = gsub("_", " ", colnames(Data_members_summed)),
+    groups = Summed_groups_sub,
+    legend.mode = "style1",
+    tuning = 0.5,
+    legend.cex = 0.32,
+    vsize = 3.8,
+    layoutOffset = c(-.2,0),
+    sampleSize = nrow(Data_members_summed),
+    filename = "Images/CoreConstructsmemberFIML",
+    filetype = "pdf"
+  )
+
+Nonmember_GGMFIML <-
+  qgraph(
+    cor_nonmemFIML,
+    layout = memberGGMFIML$layout,
+    graph = "glasso",
+    minimum = 0.1,
+    labels = TRUE,
+    nodeNames = gsub("_", " ", colnames(Data_members_summed)),
+    groups = Summed_groups_sub,
+    legend = FALSE,
+    legend.mode = "style1",
+    palette="ggplot2",
+    tuning = 0.5,
+    legend.cex = 0.32,
+    vsize = 3.8,
+    sampleSize = nrow(Data_nonmembers_summed),
+    filename = "Images/CoreConstructsNonMemberFIML",
+    filetype = "pdf"
+  )
+
+
+#display and save graphs
+memberGGM <-
+  qgraph(
+    cor_mem,
+    layout = memberGGMFIML$layout,
+    graph = "glasso",
+    minimum = 0.1,
+    palette="ggplot2",
+    labels = TRUE,
+    nodeNames = gsub("_", " ", colnames(Data_members_summed)),
+    groups = Summed_groups_sub,
+    legend.mode = "style1",
+    tuning = 0.5,
+    legend.cex = 0.32,
+    vsize = 3.8,
+    layoutOffset = c(-.2,0),
+    sampleSize = nrow(Data_members_summed),
+    filename = "Images/CoreConstructsmember",
+    filetype = "pdf"
+  )
+
+Nonmember_GGM <-
+  qgraph(
+    cor_nonmem,
+    layout = memberGGMFIML$layout,
+    graph = "glasso",
+    minimum = 0.1,
+    labels = TRUE,
+    nodeNames = gsub("_", " ", colnames(Data_members_summed)),
+    groups = Summed_groups_sub,
+    legend = FALSE,
+    legend.mode = "style1",
+    palette="ggplot2",
+    tuning = 0.5,
+    legend.cex = 0.32,
+    vsize = 3.8,
+    sampleSize = nrow(Data_nonmembers_summed),
+    filename = "Images/CoreConstructsNonMember",
+    filetype = "pdf"
+  )
+
+#Obtain adjacency matrices for SHD
+Wm <- getWmat(memberGGMFIML)
+Xm <- 1L * abs(Wm > 0.1)
+
+Wnm <- getWmat(Nonmember_GGMFIML)
+Xnm <- 1L * abs(Wnm > 0.1)
+
+
+#structurak Hamming distance
+hammDist <- hammingDist(Xm, Xnm)
+
+#print SHD
+hammDist
+
+
+#network stability
+#non-parametric due to ordinal variables
+boot <- bootnet(Scales, 
+                default = "EBICglasso",
+                statistics = c("edge", "strength"), 
+                computeCentrality = FALSE,
+                nCores = 4)
+
+summary(boot)
+# Plot bootstrapped edge CIs:
+pdf("Images/EdgeBootstrap.pdf", width = 11.2, height = 8)
+plot(boot, plot="interval", labels = FALSE)
+dev.off()
+
+
+#network comparision test
+subgroupNCT <- NCT_cor_auto(Data_members_summed,
+                       Data_nonmembers_summed,
+                       make.positive.definite = TRUE,
+                       edges = "all"
+                       )
+
+pdf("Images/NCTNetworkOverall.pdf", width = 11.2, height = 8)
+plot(subgroupNCT, what="network")
+dev.off()
+
+pdf("Images/NCTnodestrength.pdf", width = 11.2, height = 8)
+plot(subgroupNCT, what="strength")
+dev.off()
+
+
+
+# EFA:
+
+
+
+
+qgraph.efa(
+  items,
+  29,
+  groups = groups_items,
+  rotation = "promax",
+  factorCors = TRUE,
+  minimum = 0.2,
+  cut = 0.4,
+  vsize = c(3, 5),
+  borders = TRUE,
+  residuals = FALSE,
+  #corMat = TRUE,
+  label=TRUE,
+  legend=TRUE,
+  legend.cex = 0.32,
+  legend.mode = "style1",
+  filename = "Images/itemsEFA",
+  filetype = "pdf"
+)
+
+qgraph.cfa(
+  corFIML,
+  29,
+  groups = groups_items,
+  N = length(items),
+  rotation = "promax",
+  minimum = 0.2,
+  cut = 0.4,
+  vtrans=200,
+  vsize = c(3, 5),
+  borders = TRUE,
+  residuals = FALSE,
+  corMat = TRUE,
+  label=TRUE,
+  legend=TRUE,
+  filename = "Images/itemsCFA",
+  filetype = "pdf"
+)
+
+
+#MGM analysis
+scales_list <- list()
+Scales_imputed<- amelia(x = Scales)
+scales_list$data <- Scales_imputed$imputations$imp5
+scales_list$type <- c(rep("g",27), "c", "g","g","g","c")
+scales_list$level <- c(rep(1,27), 2, rep(1,3) ,2)
+fit_mgm_scales <- mgm(data = as.matrix(scales_list$data), 
+               type = scales_list$type,
+               level = scales_list$level,
+               k = 2, 
+               lambdaSel = 'EBIC', 
+               lambdaGam = 0.5)

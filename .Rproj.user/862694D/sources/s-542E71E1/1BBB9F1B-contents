@@ -1,0 +1,46 @@
+require(SID)
+
+
+G <- matrix(data = c(0, 1, 0,
+                     0, 0, 0,
+                     1, 1, 0),
+            nrow = 3,
+            byrow = T)
+
+E0 <- matrix(data = c(0, 0, 0,
+                      0, 0, 0,
+                      0, 0, 0),
+             nrow = 3,
+             byrow = T)
+
+E1 <- matrix(data = c(0, 1, 1,
+                     0, 0, 0,
+                     0, 1, 0),
+            nrow = 3,
+            byrow = T)
+
+E2 <- matrix(data = c(0, 1, 1,
+                     0, 0, 0,
+                     1, 1, 0),
+            nrow = 3,
+            byrow = T)
+
+E3 <- matrix(data = c(0, 1, 0,
+                     0, 0, 0,
+                     0, 0, 0),
+            nrow = 3,
+            byrow = T)
+
+print("SHD")
+for (e in list(G,E0,E1,E2,E3, t(G))) {
+  print(hammingDist(G,e, allMistakesOne = F))
+}
+
+print("SID")
+for (e in list(G,E0, E1,E2,E3, t(G))) {
+  print(structIntervDist(G,e)$sidUpperBound)
+  #print(structIntervDist(G,e)$sidLowerBound)
+}
+
+
+

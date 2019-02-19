@@ -1,0 +1,29 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1550502107220.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "8E69F5BF",
+    "lastKnownWriteTime" : 7308604914264011873,
+    "last_content_update" : 1550502107220,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "EB81E88C",
+        "caption" : "buur.lingam.stable",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=buur.lingam.stable&cache_key=EB81E88C",
+        "displayedObservations" : "32",
+        "environment" : "",
+        "object" : "buur.lingam.stable",
+        "preview" : "0",
+        "totalObservations" : "32",
+        "variables" : "32"
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}
