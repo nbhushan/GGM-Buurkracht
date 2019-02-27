@@ -1,0 +1,29 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1550658672236.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "E380260F",
+    "lastKnownWriteTime" : 7308604914264011873,
+    "last_content_update" : 1550658672236,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "AF83B77C",
+        "caption" : "buur.lingam.fit",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=buur.lingam.fit&cache_key=AF83B77C",
+        "displayedObservations" : 32,
+        "environment" : "",
+        "object" : "buur.lingam.fit",
+        "preview" : 0,
+        "totalObservations" : 32,
+        "variables" : 32
+    },
+    "relative_order" : 6,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}
