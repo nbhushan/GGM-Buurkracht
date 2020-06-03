@@ -1,22 +1,36 @@
 # TABLE OF CONTENTS
 # 0. Prepare environment
-# 1. Describe the study
-# 2. Set up the study
-#    2.1 Load the covariance matrices
-#    2.2 Set up group names
-# 3. Run the analysis on the item level
-# 4. Run the analysis on the scale level
-# 4. Run subgroup analysis 
-# 5. Save plots                         
-# 
+# 1. Set up the study
+#    1.1 Load the covariance matrices
+#    1.2 Set up group names
+# 2. Run the analysis on the indicator level
+# 3. Run the analysis on the scale level
+# 4. Run subgroup analysis
+# 5. Save plots
+#
 
 # 0. Prepare environment ----
-list.of.packages <- c("qgraph", "data.table", "RColorBrewer", 
-                      "SID", "xtable","dplyr","bootnet",
-                      "rstudioapi")
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages, repos = "http://cran.us.r-project.org")
+list.of.packages <- c(
+  "qgraph",
+  "data.table",
+  "RColorBrewer",
+  "SID",
+  "xtable",
+  "dplyr",
+  "bootnet",
+  "rstudioapi"
+)
+new.packages <-
+  list.of.packages[!(list.of.packages %in%
+    installed.packages()[, "Package"])]
+if (length(new.packages)) {
+  install.packages(new.packages,
+    repos = "http://cran.us.r-project.org"
+  )
+}
 
+
+# load packages
 require(qgraph)
 require(data.table)
 require(RColorBrewer)
@@ -26,22 +40,28 @@ require(dplyr)
 require(bootnet)
 require(rstudioapi)
 
-current_path <- getActiveDocumentContext()$path 
-setwd(dirname(current_path ))
-rm(list=ls())
+# get the path to active Rstudio project
+current_path <- getActiveDocumentContext()$path
+# set wd to active path
+setwd(dirname(current_path))
+# clean up
+rm(list = ls())
 
-#sample size
-N= 568
-N_member = 303
-N_nonmember = 265
+# sample size
+# hardcode these variables as the data is not open
+N <- 568
+N_member <- 303
+N_nonmember <- 265
 # END SECTION
 
 
-#####################Relationship between items################################
 
-load(file="./correlationMatrices/ItemCorrelationMatrixFIML.Rdata") #load corItems
 
-#groups items by colour (construct)
+##################### Relationship between items################################
+
+load(file = "./correlationMatrices/ItemCorrelationMatrixFIML.Rdata") # load corItems
+
+# groups items by colour (construct)
 groups_items <- list(
   `Altruistic values [1-4]` = c(1:4),
   `Biospheric values [5-8]` = c(5:8),
@@ -75,11 +95,11 @@ groups_items <- list(
 )
 
 
-#set up color scales
-col_item <- rep(brewer.pal(length(groups_items),name = "Set3"),3)
+# set up color scales
+col_item <- rep(brewer.pal(length(groups_items), name = "Set3"), 3)
 
-#display and save item graph
-#sample size = 568
+# display and save indicator graph
+# sample size N = 568
 
 glasso_item <-
   qgraph(
@@ -92,18 +112,18 @@ glasso_item <-
     minimum = 0.1,
     groups = groups_items,
     legend.cex = 0.35,
-    layoutOffset = c(-.2,0),
+    layoutOffset = c(-.2, 0),
     vsize = 3.0,
     color = col_item,
     filename = "Images/itemGGM",
     filetype = "tiff"
   )
 
-#####################Relationship between scales################################
+##################### Relationship between scales################################
 
-load(file="./correlationMatrices/ScaleCorrelationMatrixFIML.Rdata") #load corScales
+load(file = "./correlationMatrices/ScaleCorrelationMatrixFIML.Rdata") # load corScales
 
-#groups scales by category 
+# groups scales by category
 scales_groups <- list(
   `Personal factors` = c(1:8),
   `Factors related to the social context` = c(9:15),
@@ -113,9 +133,9 @@ scales_groups <- list(
   `Membership` <- c(32)
 )
 
-col_scales <- brewer.pal(length(scales_groups),name = "Accent")
+col_scales <- brewer.pal(length(scales_groups), name = "Accent")
 
-#sample size = 568
+# sample size = 568
 coreConstructsGGM <-
   qgraph(
     corScalesFIML,
@@ -130,19 +150,19 @@ coreConstructsGGM <-
     tuning = 0.5,
     legend.cex = 0.32,
     vsize = 3.8,
-    layoutOffset = c(-.2,0),
+    layoutOffset = c(-.2, 0),
     sampleSize = N,
     filename = "Images/scaleGGM",
     filetype = "tiff"
   )
-#dev.off()
+# dev.off()
 
 #####################   Subgroup analysis  ################################
 
-load(file="./correlationMatrices/members_ScaleCorrelationMatrixFIML.Rdata") 
-load(file="./correlationMatrices/non_members_ScaleCorrelationMatrixFIML.Rdata") 
+load(file = "./correlationMatrices/members_ScaleCorrelationMatrixFIML.Rdata") # member
+load(file = "./correlationMatrices/non_members_ScaleCorrelationMatrixFIML.Rdata") # non-members
 
-#colors for graphs
+# colors for graphs
 subgroup_groups <- list(
   `Personal factors` = c(1:8),
   `Factors related to the social context` = c(9:15),
@@ -151,14 +171,14 @@ subgroup_groups <- list(
   `Socio-demographics` = c(28:31)
 )
 
-#display and save graphs
+# display and save graphs
 memberGGM <-
   qgraph(
     cor_memFIML,
     layout = "spring",
     graph = "glasso",
     minimum = 0.1,
-    palette="ggplot2",
+    palette = "ggplot2",
     labels = TRUE,
     nodeNames = colnames(cor_memFIML),
     groups = subgroup_groups,
@@ -166,7 +186,7 @@ memberGGM <-
     tuning = 0.5,
     legend.cex = 0.32,
     vsize = 3.8,
-    layoutOffset = c(-.2,0),
+    layoutOffset = c(-.2, 0),
     sampleSize = N_member,
     filename = "Images/Scalesmember",
     filetype = "tiff"
@@ -183,7 +203,7 @@ Nonmember_GGM <-
     groups = subgroup_groups,
     legend = FALSE,
     legend.mode = "style1",
-    palette="ggplot2",
+    palette = "ggplot2",
     tuning = 0.5,
     legend.cex = 0.32,
     vsize = 3.8,
@@ -194,34 +214,40 @@ Nonmember_GGM <-
 
 
 ###################     Computer Structural Hamming Distance  #################
-#Obtain adjacency matrices for SHD
+# Obtain adjacency matrices for SHD
 Wm <- getWmat(memberGGM)
 Xm <- 1L * abs(Wm > 0.1)
 
 Wnm <- getWmat(Nonmember_GGM)
 Xnm <- 1L * abs(Wnm > 0.1)
 
-#Structural Hamming distance (SHD)
+# Structural Hamming distance (SHD)
 hammDist <- hammingDist(Xm, Xnm)
 
-#print SHD
+# print SHD
 hammDist
 
-####################    Stability Analysis ####################################\#network stability
-#non-parametric due to ordinal variables
-#note that bootnet requires the original dataset
-#dataset available on request
+####################    Stability Analysis ####################################
+# non-parametric due to ordinal variables
+# note that bootnet requires the original dataset
+# dataset available on request
 
-boot <- bootnet(Scales, 
-                default = "EBICglasso",
-                statistics = c("edge", "strength"), 
-                computeCentrality = FALSE,
-                nCores = 4)
+boot <- bootnet(
+  Scales,
+  default = "EBICglasso",
+  statistics = c("edge", "strength"),
+  computeCentrality = FALSE,
+  nCores = 4
+)
 
+# print summary
 summary(boot)
+
+
 # Plot bootstrapped edge CIs:
-pdf("Images/EdgeBootstrap.pdf", width = 11.2, height = 8)
-plot(boot, plot="interval", labels = FALSE)
+pdf("Images/EdgeBootstrap.pdf",
+  width = 11.2,
+  height = 8
+)
+plot(boot, plot = "interval", labels = FALSE)
 dev.off()
-
-
